@@ -8,7 +8,7 @@
         body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; touch-action: none; }
         
         #crosshair {
-            position: absolute;
+            po
             top: 50%;
             left: 50%;
             width: 16px;
@@ -360,63 +360,11 @@
                     targetData.aiNextMoveTime = performance.now() + 2000 + Math.random() * 3000;
                 }
                 
-                const vx = Math.cos(targetData.aiDirection) * targetData.aiSpeed * delta * 60;
-                const vz = Math.sin(targetData.aiDirection) * targetData.aiSpeed * delta * 60;
-
-                targetPos.x += vx;
-                targetPos.z += vz;
-
-                const distance = targetPos.distanceTo(playerPos);
-                if (distance < 3 && !INVINCIBILITY) {
-                    playerHealth -= damagePerHit;
-                    updateHealthUI();
-                }
-
-                targetPos.x = Math.max(-95, Math.min(95, targetPos.x));
-                targetPos.z = Math.max(-95, Math.min(95, targetPos.z));
-            });
-        }
-        
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            const time = performance.now();
-            const delta = (time - prevTime) / 1000;
-            prevTime = time;
-
-            const dir = new THREE.Vector3();
-            camera.getWorldDirection(dir);
-            dir.y = 0; 
-            dir.normalize();
-
-            if (moveForward !== 0) {
-                camera.position.addScaledVector(dir, moveForward * runSpeed);
-            }
-
-            if (moveSide !== 0) {
-                const sideDir = new THREE.Vector3();
-                sideDir.crossVectors(dir, camera.up); 
-                camera.position.addScaledVector(sideDir, moveSide * runSpeed);
-            }
-            
-            verticalVelocity -= GRAVITY;
+                r, camera.up); 
+                camera.position.addScaledVector(sideDir, verticalVelocity -= GRAVITY;
             camera.position.y += verticalVelocity;
 
             if (camera.position.y <= 2) {
                 verticalVelocity = 0;
-                camera.position.y = 2;
-                isGrounded = true;
-            }
-
-            updateAI(delta); 
-            renderer.render(scene, camera);
-        }
-    </script>
-</body>
+                camera.position.
 </html>
