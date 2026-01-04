@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tiger Hunter: Pro Remastered</title>
+    <style>
+        :root { --sky: #0f172a; --gold: #fbbf24; --purple: #a855f7; --cyan: #22d3ee; --red: #ef4444; }
+        * { box-sizing: border-box; touch-action: manipulation; user-select: none; }
+        body { margin: 0; overflow: hidden; font-family: sans-serif; background: #000; color: white; }
+        
+        #game-stage { position: relative; width: 1000px; height: 420px; background: linear-gradient(#1e293b, #0f172a); overflow: hidden; border: 4px solid #334155; margin: 10px auto; border-radius: 20px; }
+        .cliff { position: absolute; bottom: 0; left: 0; width: 220px; height: 320px; background: #0f172a; border-right: 8px solid #000; z-index: 5; }
+        .hunter { position: absolute; bottom: 320px; left: 50px; font-size: 75px; z-index: 10; transition: transform 0.2s; }
+   
+        #soul-shadow { position: absolute; bottom: 325px; left: 40px; font-size: 80px; opacity: 0; filter: blur(5px) invert(1) sepia(1) saturate(5) hue-rotate(250deg); z-index: 9; transition: 0.3s; pointer-events: none; }
+        .soul-active #soul-shadow { opacity: 0.5; animation: shadow-pulse 1s infinite alternate; }
+        @keyframes shadow-pulse { from { transform: scale(1) translateX(0); } to { transform: scale(1.1) translateX(-10px); } }
+
+        #tiger { position: absolute; bottom: 50px; left: 650px; font-size: 85px; z-index: 4; display: none; }
+        #rope-line { position: absolute; height: 6px; background: #d4a373; transform-origin: left center; z-index: 4; top: 310px; left: 125px; }
+
+        /* UI */
+        .top-ui { position: absolute; top: 10px; left: 230px; display: flex; gap: 8px; z-index: 100; }
+        .stat-card { background: rgba(0,0,0,0.85); padding: 8px 12px; border-radius: 12px; border: 1px solid #444; min-width: 100px; }
+        #baby-oil-text { position: absolute; top: 150px; left: 50%; transform: translateX(-50%); font-size: 60px; font-weight: 900; color: var(--gold); z-index: 1000; display: none; animation: blink 0.1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } }
+
+        #wait-msg { position: absolute; top: 200px; width: 100%; text-align: center; font-size: 30px; color: var(--cyan); display: none; z-index: 100; font-weight: bold; }
+
+        /* Shop */
+        #shop-panel { position: absolute; top: 30px; left: 250px; width: 500px; background: #1e293b; border: 3px solid var(--gold); padding: 20px; z-index: 300; display: none; border-radius: 20px; }
+        .shop-tabs { display: flex; gap: 5px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 10px; background: #334155; border: none; color: white; cursor: pointer; border-radius: 5px; }
+        .tab-btn.active { background: var(--gold); color: #000; font-weight: bold; }
+        .tab-content { max-height: 250px; overflow-y: auto; display: none; }
+        .shop-row { background: #334155; padding: 10px; margin-bottom: 5px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* Controls */
+        .controls-container { width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 250px 1fr 250px; gap: 15px; padding: 10px; }
+        .skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn-pull { width: 100%; height: 120px; background: var(--red); border: none; border-radius: 20px; color: white; font-size: 26px; font-weight: 900; border-bottom: 8px solid #991b1b; cursor: pointer; position: relative; }
+        .btn-skill { width: 100%; height: 55px; background: #334155; color: white; border: 2px solid #475569; border-radius: 10px; font-size: 10px; position: relative; overflow: hidden; }
+        .cd-overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: rgba(0,0,0,0.8); transition: height 0.1s linear; }
+
+        .particle { position: absolute; pointer-events: none; border-radius: 50%; z-index: 99; animation: p-out 0.6s forwards; }
+        @keyframes p-out { to { opacity: 0; transform: translate(var(--mx), var(--my)) scale(0.2); } }
+        #warning-ring { position: absolute; width: 140px; height: 50px; background: rgba(255,0,0,0.3); border-radius: 50%; bottom: -10px; left: -25px; display: none; border: 2px solid red; }
+    </style>
+</head>
+<body>
+
+<div id="baby-oil-text">BABY OIL!</div>
+<div id="wait-msg">Đang đặt bẫy HỔ</div>
+
+<div id="game-stage">
+    <div class="top-ui">
+        <div class="stat-card">💰 $<span id="m-val">0</span></div>
+        <div class="stat-card">⭐ Lv.<span id="l-val">1</span> <br><small id="exp-val">0/100</small></div>
+        <div class="stat-card" style="min-width: 180px;">
+            <div id="t-info" style="color:var(--gold); font-weight:bold;">SẴN SÀNG...</div>
+            <div style="background:#000; height:8px; margin:4px 0;"><div id="t-hp-bar" style="background:var(--red); width:100%; height:100%"></div></div>
+            <div id="t-weight-val" style="font-size:11px;">Cân nặng: 0kg</div>
+        </div>
+        <div class="stat-card" onclick="toggleShop()" style="cursor:pointer; background:var(--gold); color:#000; font-weight:bold; text-align:center">SHOP</div>
+    </div>
+
+    <div style="position:absolute; bottom:10px; left:230px; display:flex; gap:8px; z-index:100">
+        <div onclick="useItem('meat')" style="background:#166534; padding:8px; border-radius:8px; cursor:pointer">🥩 <span id="q-meat">0</span></div>
+        <div onclick="useItem('cocan')" style="background:#4c1d95; padding:8px; border-radius:8px; cursor:pointer">⚡ <span id="q-cocan">0</span></div>
+        <div onclick="useItem('book')" style="background:#991b1b; padding:8px; border-radius:8px; cursor:pointer">📜 <span id="q-book">0</span></div>
+    </div>
+
+    <div id="shop-panel">
+        <div class="shop-tabs">
+            <button class="tab-btn active" onclick="showTab('tab-char')">NHÂN VẬT</button>
+            <button class="tab-btn" onclick="showTab('tab-rope')">NÂNG CẤP</button>
+            <button class="tab-btn" onclick="showTab('tab-item')">TRANG BỊ</button>
+        </div>
+        <div id="tab-char" class="tab-content" style="display:block">
+            <div class="shop-row">🧔 Thợ Săn Gốc <span>Free</span> <button onclick="buyChar('basic',0)">Chọn</button></div>
+            <div class="shop-row">👨‍🔧 Thợ Điện <span>$5,600</span> <button onclick="buyChar('electrician',5600)">Mua</button></div>
+            <div class="shop-row">🏿 Anh Da Đen <span>$6900</span> <button onclick="buyChar('blackGuy',6900)">Mua</button></div>
+            <div class="shop-row">🧑‍🦽‍➡️Dần Điếu Thiên <span>$10000</span> <button onclick="buyChar('dan',10000)">Mua</button></div>
+        </div>
+        <div id="tab-rope" class="tab-content">
+            <div class="shop-row">💪 Sức Mạnh (Lv.<span id="pow-lv">0</span>) <span>$<span id="up-cost">1000</span></span> <button onclick="upgradePower()">Nâng</button></div>
+        </div>
+        <div id="tab-item" class="tab-content">
+            <div class="shop-row">🥩 Thịt Mê <span>$300</span> <button onclick="buyItem('meat',300)">Mua</button></div>
+            <div class="shop-row">⚡ Cocan (Nerf) <span>$2,500</span> <button onclick="buyItem('cocan',2500)">Mua</button></div>
+            <div class="shop-row">📜 Thiên Thư <span>$12,000</span> <button onclick="buyItem('book',12000)">Mua</button></div>
+        </div>
+        <button onclick="toggleShop()" style="width:100%; padding:10px; background:var(--red); color:white; border:none; border-radius:10px; margin-top:10px">ĐÓNG</button>
+    </div>
+
+    <div class="cliff"></div>
+    <div id="soul-shadow">🧔</div>
+    <div id="hunter" class="hunter">🧔</div>
+    <div id="tiger"><div id="warning-ring"></div><span id="tiger-emoji">🐯</span></div>
+    <div id="rope-line" style="display:none"></div>
+</div>
+
+<div class="controls-container">
+    <div class="skill-grid">
+        <button class="btn-skill" id="btn-shotgun" onclick="useSkill('shotgun', 5000)">🔫 SHOTGUN<div class="cd-overlay"></div></button>
+        <button class="btn-skill" id="btn-slam" onclick="useSkill('slam', 8000)">🔨 ĐẬP CẦN<div class="cd-overlay"></div></button>
+        <button class="btn-skill" id="btn-soul" onclick="useSkill('soul', 20000)">✨ LINH HỒN<div class="cd-overlay"></div></button>
+        <button class="btn-skill" id="btn-potion" onclick="useSkill('potion', 30000)">🍶 VƯƠNG PHÁP<div class="cd-overlay"></div></button>
+    </div>
+    <button class="btn-pull" id="pull-btn">GIỮ ĐỂ KÉO</button>
+    <button class="btn-pull" style="height:120px; font-size:16px; background:#1e40af" onclick="useCharSkill(12000)">KỸ NĂNG<br>RIÊNG</button>
+</div>
+
+<script>
+ 
+    let data = JSON.parse(localStorage.getItem('tigerSave')) || {
+        money: 1000, level: 1, exp: 0, powerUp: 0, char: "basic", 
+        inv: { meat: 1, cocan: 0, book: 0 }, ownedChars: ["basic"]
+    };
+
+    function save() { localStorage.setItem('tigerSave', JSON.stringify(data)); }
+
+    let state = "IDLE", hp = 100, dist = 650, weight = 150, isPulling = false;
+    let stun = false, isCocan = false, isSoul = false;
+    let cd = { shotgun: 0, slam: 0, soul: 0, potion: 0, char: 0 };
+    let mainLoop, aiLoop;
+
+    const pullBtn = document.getElementById('pull-btn');
+    const startP = (e) => { e.preventDefault(); if(state === "IDLE") waitBite(); else isPulling = true; };
+    pullBtn.addEventListener('mousedown', startP);
+    window.addEventListener('mouseup', () => isPulling = false);
+    pullBtn.addEventListener('touchstart', startP);
+    window.addEventListener('touchend', () => isPulling = false);
+
+    function waitBite() {
+        state = "WAITING";
+        document.getElementById('wait-msg').style.display = "block";
+        setTimeout(() => {
+            document.getElementById('wait-msg').style.display = "none";
+            spawnTiger();
+        }, 1500 + Math.random() * 1500);
+    }
+
+    function spawnTiger() {
+        state = "FIGHT";
+        let r = Math.random();
+        let isSpecial = r < (0.15 + (data.level > 20 ? 0.1 : 0));
+        let type = "NORMAL";
+        if(r < 0.02) type = "THIÊN LONG";
+        else if(isSpecial) type = "VƯƠNG";
+
+        let minW = data.level > 20 ? 300 : (data.level > 10 ? 200 : (data.level > 5 ? 100 : 50));
+        weight = minW + Math.floor(Math.random() * 200);
+        if(type === "VƯƠNG") weight += 200;
+        if(type === "THIÊN LONG") weight += 450; // Nerf nhẹ hổ long
+
+        hp = 50; dist = 650;
+        document.getElementById('t-info').innerText = type + " HỔ";
+        document.getElementById('tiger-emoji').innerText = type === "THIÊN LONG" ? "🐉🐯" : (type === "VƯƠNG" ? "🐅" : "🐯");
+        document.getElementById('tiger').style.display = "block";
+        document.getElementById('rope-line').style.display = "block";
+        
+        mainLoop = setInterval(update, 50);
+        aiLoop = setInterval(tigerAI, 2800); // Hổ dùng chiêu nhanh hơn
+    }
+
+    function update() {
+        // Hổ thường mạnh hơn 4% (baseRes tăng)
+        let res = (weight / 180) * 1.15; 
+        if(data.char === 'dan') res *= 0.85;
+        if(!stun) dist += (4.2 * res);
+
+        if(isPulling) {
+            let myPower = (data.char === 'dan' ? 32 : 16) * (1 + (data.level * 0.02) + (data.powerUp * 0.05));
+            if(isCocan) myPower *= 1.5; // Nerf Cocan
+            if(isSoul) myPower *= 2.2; // Buff Soul
+            if(hp <= 0) myPower *= 3;
+
+            dist -= (myPower / res);
+            if(hp > 0) hp -= 0.5;
+            if(data.char === 'blackGuy') document.getElementById('baby-oil-text').style.display = "block";
+            createParticles(120, 350, '#d4a373', 1);
+        } else {
+            document.getElementById('baby-oil-text').style.display = "none";
+        }
+
+        if(dist < 220) finish(true);
+        if(dist > 950) finish(false);
+        draw();
+    }
+
+    function tigerAI() {
+        if(state !== "FIGHT" || stun || hp <= 0) return;
+        const ring = document.getElementById('warning-ring');
+        ring.style.display = "block";
+        setTimeout(() => {
+            ring.style.display = "none";
+            if(!stun && state === "FIGHT") { 
+                dist += 140; 
+                createParticles(dist + 40, 350, '#fff', 8); 
+            }
+        }, 800);
+    }
+
+    function useSkill(name, time) {
+        if(state !== "FIGHT" || cd[name] > 0) return;
+        cd[name] = time;
+
+        if(name === 'shotgun') { 
+            stun = true; createParticles(dist+40, 330, 'orange', 15); 
+            setTimeout(()=>stun=false, 2000); 
+        }
+        if(name === 'slam') { dist -= 100; stun = true; setTimeout(()=>stun=false, 1000); }
+        if(name === 'soul') { 
+            isSoul = true; document.body.classList.add('soul-active');
+            setTimeout(() => { isSoul = false; document.body.classList.remove('soul-active'); }, 7000); 
+        }
+        if(name === 'potion') { // Vương Pháp trở lại
+            let count = 0;
+            stun = true;
+            let iv = setInterval(() => {
+                dist -= 70; count++;
+                createParticles(dist+40, 300, 'gold', 5);
+                if(count >= 5) { clearInterval(iv); stun = false; }
+            }, 300);
+        }
+
+        startCD(name, time);
+    }
+
+    function startCD(name, time) {
+        let start = Date.now();
+        let iv = setInterval(() => {
+            let el = Date.now() - start;
+            document.querySelector(`#btn-${name} .cd-overlay`).style.height = Math.max(0, 100-(el/time)*100) + "%";
+            if(el >= time) { clearInterval(iv); cd[name] = 0; }
+        }, 100);
+    }
+
+    function useCharSkill(time) {
+        if(state !== "FIGHT" || cd.char > 0) return;
+        cd.char = time;
+        if(data.char === 'electrician') { stun = true; createParticles(dist+40, 330, 'cyan', 20); setTimeout(()=>stun=false, 3000); }
+        else if(data.char === 'dan') { dist -= 200; stun = true; setTimeout(()=>stun=false, 1500); }
+        else dist -= 150;
+        setTimeout(() => cd.char = 0, time);
+    }
+
+    function draw() {
+        document.getElementById('m-val').innerText = Math.floor(data.money).toLocaleString();
+        document.getElementById('l-val').innerText = data.level;
+        document.getElementById('exp-val').innerText = data.exp + "/100";
+        document.getElementById('t-weight-val').innerText = "Cân nặng: " + Math.floor(weight) + "kg";
+        document.getElementById('t-hp-bar').style.width = (hp/50*100) + "%";
+        document.getElementById('tiger').style.left = dist + "px";
+        document.getElementById('q-meat').innerText = data.inv.meat;
+        document.getElementById('q-cocan').innerText = data.inv.cocan;
+        document.getElementById('q-book').innerText = data.inv.book;
+        document.getElementById('hunter').innerText = (data.char==='dan'?'🧑‍🦽‍➡️':(data.char==='blackGuy'?'🏿':'🧔'));
+        document.getElementById('soul-shadow').innerText = document.getElementById('hunter').innerText;
+        document.getElementById('pow-lv').innerText = data.powerUp;
+        document.getElementById('up-cost').innerText = (1000 + data.powerUp * 500);
+
+        if(state === "FIGHT") {
+            const rope = document.getElementById('rope-line');
+            const dx = (dist + 40) - 125, dy = 350 - 310;
+            rope.style.width = Math.sqrt(dx*dx + dy*dy) + "px";
+            rope.style.transform = `rotate(${Math.atan2(dy, dx) * 180 / Math.PI}deg)`;
+        }
+    }
+
+    // --- CỬA HÀNG (FIXED) ---
+    function buyItem(t, p) { if(data.money>=p){ data.money-=p; data.inv[t]++; save(); draw(); } }
+    function buyChar(c, p) { 
+        if(data.ownedChars.includes(c)) { data.char = c; save(); draw(); alert("Đã đổi nhân vật!"); }
+        else if(data.money>=p) { data.money-=p; data.ownedChars.push(c); data.char = c; save(); draw(); alert("Mua thành công!"); }
+    }
+    function upgradePower() {
+        let p = 1000 + data.powerUp * 500;
+        if(data.money>=p) { data.money-=p; data.powerUp++; save(); draw(); }
+    }
+
+    function createParticles(x, y, color, count) {
+        for(let i=0; i<count; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.style.left = x + 'px'; p.style.top = y + 'px';
+            p.style.width = p.style.height = (Math.random()*6+2)+'px';
+            p.style.background = color;
+            p.style.setProperty('--mx', (Math.random()*50-25)+'px');
+            p.style.setProperty('--my', (Math.random()*50-25)+'px');
+            document.getElementById('game-stage').appendChild(p);
+            setTimeout(() => p.remove(), 600);
+        }
+    }
+
+    function useItem(t) {
+        if(state!=="FIGHT" || data.inv[t]<=0) return;
+        data.inv[t]--;
+        if(t==='meat') weight *= 0.7;
+        if(t==='cocan') { isCocan = true; setTimeout(()=>isCocan=false, 8000); }
+        if(t==='book') hp = 20; // Nerf Thiên Thư
+        save(); draw();
+    }
+
+    function toggleShop() { const s = document.getElementById('shop-panel'); s.style.display = s.style.display === 'none' ? 'block' : 'none'; }
+    function showTab(id) {
+        document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+        document.getElementById(id).style.display = 'block';
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+
+    function finish(win) {
+        clearInterval(mainLoop); clearInterval(aiLoop);
+        document.getElementById('baby-oil-text').style.display = "none";
+        if(win) {
+            let reward = weight * 2.5; data.money += reward; data.exp += 20;
+            if(data.exp >= 100) { data.level++; data.exp = 0; alert("LEVEL UP!"); }
+            alert("BẮT THÀNH CÔNG! +$" + Math.floor(reward));
+        } else alert("DẦN CHẠY MẤT!");
+        state = "IDLE"; document.getElementById('tiger').style.display = "none";
+        document.getElementById('rope-line').style.display = "none";
+        save(); draw();
+    }
+
+    draw();
+</script>
+</body>
+</html>
